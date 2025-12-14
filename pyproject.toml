@@ -31,3 +31,6 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 
+[tool.pylint.main]
+# Disable pylint - ruff is the standard linter for this repository
+ignore-patterns = [".*"]
