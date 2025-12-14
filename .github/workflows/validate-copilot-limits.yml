@@ -1,0 +1,49 @@
+name: Validate Copilot Context Limits
+
+on:
+  push:
+    paths:
+      - ".github/copilot-instructions.md"
+      - ".github/instructions/**"
+      - ".github/prompts/**"
+      - ".github/agents/**"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "GEMINI.md"
+      - "scripts/validate_context_limits.py"
+      - "scripts/copilot-context-health.conf"
+  pull_request:
+    paths:
+      - ".github/copilot-instructions.md"
+      - ".github/instructions/**"
+      - ".github/prompts/**"
+      - ".github/agents/**"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "GEMINI.md"
+      - "scripts/validate_context_limits.py"
+      - "scripts/copilot-context-health.conf"
+  workflow_dispatch:
+
+jobs:
+  validate-limits:
+    name: Validate Context Limits
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
+      - name: Validate Copilot instruction file limits
+        run: python scripts/validate_context_limits.py
