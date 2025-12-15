@@ -370,6 +370,7 @@ def main() -> int:
     config = load_config(config_path)
     info_pct = int(config.get("INFO_THRESHOLD_PERCENT", 50))
     warn_pct = int(config.get("WARN_THRESHOLD_PERCENT", 75))
+    chars_per_token = int(config.get("CHARS_PER_TOKEN", 4))
 
     # Define file patterns and their limits from config (cast to int)
     repo_limit = int(config["LIMIT_REPO_INSTRUCTIONS"])
@@ -422,7 +423,8 @@ def main() -> int:
                     prev_total = category_totals.get(current_section, 0)
                     category_totals[current_section] = prev_total + section_total
                     if section_files > 1:
-                        print(f"  --- Section total: {section_total} chars ({section_files} files)")
+                        s_tok = estimate_tokens(section_total, chars_per_token)
+                        print(f"  --- {section_total} chars ~{s_tok} tok ({section_files} files)")
                 print(f"\n{section}:")
                 current_section = section
                 section_total, section_files = 0, 0
@@ -439,27 +441,29 @@ def main() -> int:
                 category_files[section] = []
             category_files[section].append((file_path, cnt))
 
+            tokens = estimate_tokens(cnt, chars_per_token)
             if result.status == "error":
                 print(f"  ERROR: {result.path} exceeds limit")
-                print(f"    Characters: {cnt} / {lim} ({cnt - lim} over)")
+                print(f"    Characters: {cnt} / {lim} ({cnt - lim} over) ~{tokens} tokens")
                 print("    Fix: Split content into multiple files or reduce text")
                 errors += 1
             elif result.status == "warning":
                 print(f"  WARN: {result.path} approaching limit")
-                print(f"    Characters: {cnt} / {lim} ({lim - cnt} remaining)")
+                print(f"    Characters: {cnt} / {lim} ({lim - cnt} remaining) ~{tokens} tokens")
                 print("    Action: Review content; consider splitting soon")
                 warnings += 1
             elif result.status == "info":
-                print(f"  INFO: {result.path} ({cnt} / {lim} chars)")
+                print(f"  INFO: {result.path} ({cnt} / {lim} chars, ~{tokens} tokens)")
             else:
-                print(f"  OK: {result.path} ({cnt} / {lim} chars)")
+                print(f"  OK: {result.path} ({cnt} / {lim} chars, ~{tokens} tokens)")
 
     # Store last section total
     if current_section:
         prev_total = category_totals.get(current_section, 0)
         category_totals[current_section] = prev_total + section_total
         if section_files > 1:
-            print(f"  --- Section total: {section_total} chars ({section_files} files)")
+            sec_tok = estimate_tokens(section_total, chars_per_token)
+            print(f"  --- {section_total} chars ~{sec_tok} tok ({section_files} files)")
 
     # Category budget validation
     print("\n" + "=" * 62)
@@ -468,19 +472,22 @@ def main() -> int:
         total = category_totals.get(category, 0)
         if total == 0:
             continue
+        cat_tokens = estimate_tokens(total, chars_per_token)
         cat_result = validate_category(category, total, budget, info_pct, warn_pct)
         if cat_result.status == "error":
             print(f"  ERROR: {category} exceeds budget")
-            print(f"    Total: {total} / {budget} ({total - budget} over)")
+            over = total - budget
+            print(f"    Total: {total} / {budget} ({over} over) ~{cat_tokens} tokens")
             errors += 1
         elif cat_result.status == "warning":
             print(f"  WARN: {category} approaching budget")
-            print(f"    Total: {total} / {budget} ({budget - total} remaining)")
+            remaining = budget - total
+            print(f"    Total: {total} / {budget} ({remaining} remaining) ~{cat_tokens} tokens")
             warnings += 1
         elif cat_result.status == "info":
-            print(f"  INFO: {category} ({total} / {budget} chars)")
+            print(f"  INFO: {category} ({total} / {budget} chars, ~{cat_tokens} tokens)")
         else:
-            print(f"  OK: {category} ({total} / {budget} chars)")
+            print(f"  OK: {category} ({total} / {budget} chars, ~{cat_tokens} tokens)")
 
     # Outlier analysis using IQR method
     iqr_multiplier = config.get("OUTLIER_IQR_MULTIPLIER", 1.5)
@@ -561,7 +568,8 @@ def main() -> int:
             print("  No outliers detected")
 
     print("\n" + "=" * 62)
-    print(f"Overall: {overall_total} chars across {overall_files} files")
+    overall_tokens = estimate_tokens(overall_total, chars_per_token)
+    print(f"Overall: {overall_total} chars (~{overall_tokens} tokens) across {overall_files} files")
     print(f"Summary: {errors} error(s), {warnings} warning(s)")
 
     if errors > 0:
