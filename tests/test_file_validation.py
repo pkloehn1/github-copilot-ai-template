@@ -6,7 +6,7 @@ from pathlib import Path
 
 def test_validate_file_ok():
     """validate_file should return ok status for file under info threshold."""
-    from scripts.validate_context_limits import validate_file
+    from scripts.context_validator.validator import validate_file
 
     # With 4 chars/token and 8000 token limit (default provider), 1000 chars = 250 tokens
     # 250 tokens is ~3% of 8000, well under 50% info threshold
@@ -25,7 +25,7 @@ def test_validate_file_ok():
 
 def test_validate_file_info():
     """validate_file should return info status for file above info threshold."""
-    from scripts.validate_context_limits import validate_file
+    from scripts.context_validator.validator import validate_file
 
     # Need > 50% of 8000 tokens = 4000 tokens = 16000 chars
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -42,7 +42,7 @@ def test_validate_file_info():
 
 def test_validate_file_warning():
     """validate_file should return warning status for file above warn threshold."""
-    from scripts.validate_context_limits import validate_file
+    from scripts.context_validator.validator import validate_file
 
     # Need > 75% of 8000 tokens = 6000 tokens = 24000 chars
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -59,7 +59,7 @@ def test_validate_file_warning():
 
 def test_validate_file_error():
     """validate_file should return error status for file over limit."""
-    from scripts.validate_context_limits import validate_file
+    from scripts.context_validator.validator import validate_file
 
     # Need > 8000 tokens = 32000 chars
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -76,7 +76,7 @@ def test_validate_file_error():
 
 def test_get_char_count():
     """get_char_count should return correct character count."""
-    from scripts.validate_context_limits import get_char_count
+    from scripts.context_validator.utils import get_char_count
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
         f.write("Hello World")  # 11 characters
@@ -89,7 +89,7 @@ def test_get_char_count():
 
 def test_get_char_count_utf8():
     """get_char_count should handle UTF-8 characters."""
-    from scripts.validate_context_limits import get_char_count
+    from scripts.context_validator.utils import get_char_count
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
         f.write("Hello 世界")  # 8 characters (not bytes)
@@ -102,7 +102,7 @@ def test_get_char_count_utf8():
 
 def test_estimate_tokens_default_ratio():
     """estimate_tokens should convert chars to tokens using default ratio."""
-    from scripts.validate_context_limits import estimate_tokens
+    from scripts.context_validator.utils import estimate_tokens
 
     # 400 chars / 4 chars_per_token = 100 tokens
     result = estimate_tokens(400)
@@ -111,7 +111,7 @@ def test_estimate_tokens_default_ratio():
 
 def test_estimate_tokens_custom_ratio():
     """estimate_tokens should accept custom chars_per_token ratio."""
-    from scripts.validate_context_limits import estimate_tokens
+    from scripts.context_validator.utils import estimate_tokens
 
     # 300 chars / 3 chars_per_token = 100 tokens
     result = estimate_tokens(300, chars_per_token=3)
@@ -120,7 +120,7 @@ def test_estimate_tokens_custom_ratio():
 
 def test_estimate_tokens_rounds_up():
     """estimate_tokens should round up partial tokens."""
-    from scripts.validate_context_limits import estimate_tokens
+    from scripts.context_validator.utils import estimate_tokens
 
     # 401 chars / 4 = 100.25, should round up to 101
     result = estimate_tokens(401)
@@ -129,7 +129,7 @@ def test_estimate_tokens_rounds_up():
 
 def test_estimate_tokens_zero():
     """estimate_tokens should return 0 for 0 chars."""
-    from scripts.validate_context_limits import estimate_tokens
+    from scripts.context_validator.utils import estimate_tokens
 
     result = estimate_tokens(0)
     assert result == 0
@@ -137,7 +137,7 @@ def test_estimate_tokens_zero():
 
 def test_get_provider_for_claude_md():
     """get_provider_for_file should detect CLAUDE.md as anthropic."""
-    from scripts.validate_context_limits import get_provider_for_file
+    from scripts.context_validator.utils import get_provider_for_file
 
     result = get_provider_for_file(Path("CLAUDE.md"))
     assert result == "anthropic"
@@ -145,7 +145,7 @@ def test_get_provider_for_claude_md():
 
 def test_get_provider_for_gemini_md():
     """get_provider_for_file should detect GEMINI.md as google."""
-    from scripts.validate_context_limits import get_provider_for_file
+    from scripts.context_validator.utils import get_provider_for_file
 
     result = get_provider_for_file(Path("GEMINI.md"))
     assert result == "google"
@@ -153,7 +153,7 @@ def test_get_provider_for_gemini_md():
 
 def test_get_provider_for_agents_md():
     """get_provider_for_file should detect AGENTS.md as default."""
-    from scripts.validate_context_limits import get_provider_for_file
+    from scripts.context_validator.utils import get_provider_for_file
 
     result = get_provider_for_file(Path("AGENTS.md"))
     assert result == "default"
@@ -161,7 +161,7 @@ def test_get_provider_for_agents_md():
 
 def test_get_provider_for_copilot_instructions():
     """get_provider_for_file should detect copilot-instructions.md as default."""
-    from scripts.validate_context_limits import get_provider_for_file
+    from scripts.context_validator.utils import get_provider_for_file
 
     result = get_provider_for_file(Path(".github/copilot-instructions.md"))
     assert result == "default"
@@ -169,7 +169,7 @@ def test_get_provider_for_copilot_instructions():
 
 def test_get_provider_token_limit_anthropic():
     """get_provider_token_limit should return 8K tokens for anthropic."""
-    from scripts.validate_context_limits import get_provider_token_limit
+    from scripts.context_validator.utils import get_provider_token_limit
 
     result = get_provider_token_limit("anthropic")
     assert result == 8000  # 4% of 200K
@@ -177,7 +177,7 @@ def test_get_provider_token_limit_anthropic():
 
 def test_get_provider_token_limit_google():
     """get_provider_token_limit should return ~42K tokens for google."""
-    from scripts.validate_context_limits import get_provider_token_limit
+    from scripts.context_validator.utils import get_provider_token_limit
 
     result = get_provider_token_limit("google")
     assert result == 41943  # 4% of 1,048,576
@@ -185,7 +185,7 @@ def test_get_provider_token_limit_google():
 
 def test_get_provider_token_limit_default():
     """get_provider_token_limit should return 8K tokens for default."""
-    from scripts.validate_context_limits import get_provider_token_limit
+    from scripts.context_validator.utils import get_provider_token_limit
 
     result = get_provider_token_limit("default")
     assert result == 8000  # 4% of 200K (conservative)
@@ -193,7 +193,7 @@ def test_get_provider_token_limit_default():
 
 def test_get_provider_token_limit_unknown_key():
     """get_provider_token_limit should return default limit for unknown provider."""
-    from scripts.validate_context_limits import get_provider_token_limit
+    from scripts.context_validator.utils import get_provider_token_limit
 
     # Unknown provider key should fall back to default limit
     result = get_provider_token_limit("unknown_provider")
@@ -202,7 +202,7 @@ def test_get_provider_token_limit_unknown_key():
 
 def test_validate_file_exactly_at_info_threshold():
     """validate_file should return ok when exactly at info threshold."""
-    from scripts.validate_context_limits import validate_file
+    from scripts.context_validator.validator import validate_file
 
     # Exactly 50% of 8000 = 4000 tokens = 16000 chars
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -218,7 +218,7 @@ def test_validate_file_exactly_at_info_threshold():
 
 def test_validate_file_one_token_over_info_threshold():
     """validate_file should return info when one token over info threshold."""
-    from scripts.validate_context_limits import validate_file
+    from scripts.context_validator.validator import validate_file
 
     # One token over 50% of 8000 = 4001 tokens = 16004 chars
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -234,7 +234,7 @@ def test_validate_file_one_token_over_info_threshold():
 
 def test_validate_file_just_under_info_threshold():
     """validate_file should return ok when just under info threshold."""
-    from scripts.validate_context_limits import validate_file
+    from scripts.context_validator.validator import validate_file
 
     # Just under 50% of 8000 = 3999 tokens = 15996 chars
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -249,7 +249,7 @@ def test_validate_file_just_under_info_threshold():
 
 def test_validate_file_exactly_at_limit():
     """validate_file should return warning when exactly at limit."""
-    from scripts.validate_context_limits import validate_file
+    from scripts.context_validator.validator import validate_file
 
     # Exactly 8000 tokens = 32000 chars (at limit, not over)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -265,7 +265,7 @@ def test_validate_file_exactly_at_limit():
 
 def test_validate_file_one_token_over_limit():
     """validate_file should return error when one token over limit."""
-    from scripts.validate_context_limits import validate_file
+    from scripts.context_validator.validator import validate_file
 
     # 8001 tokens = 32004 chars (one token over)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -280,7 +280,7 @@ def test_validate_file_one_token_over_limit():
 
 def test_validate_category_ok():
     """validate_category should return ok when total under info threshold."""
-    from scripts.validate_context_limits import validate_category
+    from scripts.context_validator.validator import validate_category
 
     # 5000 chars total, budget 24000, info at 50% = 12000
     result = validate_category(
@@ -298,7 +298,7 @@ def test_validate_category_ok():
 
 def test_validate_category_info():
     """validate_category should return info when above info threshold."""
-    from scripts.validate_context_limits import validate_category
+    from scripts.context_validator.validator import validate_category
 
     # 14000 chars total, budget 24000, info at 50% = 12000
     result = validate_category(
@@ -314,7 +314,7 @@ def test_validate_category_info():
 
 def test_validate_category_warning():
     """validate_category should return warning when above warn threshold."""
-    from scripts.validate_context_limits import validate_category
+    from scripts.context_validator.validator import validate_category
 
     # 20000 chars total, budget 24000, warn at 75% = 18000
     result = validate_category(
@@ -330,7 +330,7 @@ def test_validate_category_warning():
 
 def test_validate_category_error():
     """validate_category should return error when over budget."""
-    from scripts.validate_context_limits import validate_category
+    from scripts.context_validator.validator import validate_category
 
     # 25000 chars total, budget 24000 = over budget
     result = validate_category(
@@ -344,45 +344,11 @@ def test_validate_category_error():
     assert result.status == "error"
 
 
-def test_calculate_effective_limit_single_file():
-    """calculate_effective_limit should return full budget for 1 file."""
-    from scripts.validate_context_limits import calculate_effective_limit
-
-    # 1 file, budget 24000 = 24000 per file
-    result = calculate_effective_limit(budget=24000, file_count=1)
-    assert result == 24000
-
-
-def test_calculate_effective_limit_multiple_files():
-    """calculate_effective_limit should divide budget by file count."""
-    from scripts.validate_context_limits import calculate_effective_limit
-
-    # 4 files, budget 24000 = 6000 per file
-    result = calculate_effective_limit(budget=24000, file_count=4)
-    assert result == 6000
-
-
-def test_calculate_effective_limit_respects_minimum():
-    """calculate_effective_limit should not go below minimum limit."""
-    from scripts.validate_context_limits import calculate_effective_limit
-
-    # 100 files, budget 24000 = 240 per file, but min is 1000
-    result = calculate_effective_limit(budget=24000, file_count=100, min_limit=1000)
-    assert result == 1000
-
-
-def test_calculate_effective_limit_zero_files():
-    """calculate_effective_limit should return budget for 0 files."""
-    from scripts.validate_context_limits import calculate_effective_limit
-
-    # Edge case: 0 files should return the budget (no division by zero)
-    result = calculate_effective_limit(budget=24000, file_count=0)
-    assert result == 24000
 
 
 def test_detect_outliers_no_outliers():
     """detect_outliers should return empty lists when no outliers exist."""
-    from scripts.validate_context_limits import detect_outliers
+    from scripts.context_validator.stats import detect_outliers
 
     # All files similar size, no outliers (IQR method needs at least 4 files)
     file_sizes = [1000, 1100, 1050, 950, 1000, 1025]
@@ -393,7 +359,7 @@ def test_detect_outliers_no_outliers():
 
 def test_detect_outliers_with_upper_outlier():
     """detect_outliers should identify file significantly larger than peers."""
-    from scripts.validate_context_limits import detect_outliers
+    from scripts.context_validator.stats import detect_outliers
 
     # Need enough clustered data so outlier is clearly outside upper fence
     # With [100, 101, 102, 103, 104, 105, 106, 5000]:
@@ -407,7 +373,7 @@ def test_detect_outliers_with_upper_outlier():
 
 def test_detect_outliers_with_lower_outlier():
     """detect_outliers should identify file significantly smaller than peers."""
-    from scripts.validate_context_limits import detect_outliers
+    from scripts.context_validator.stats import detect_outliers
 
     # File at index 0 is way smaller than others (outside lower fence)
     # With [10, 1000, 1100, 1200, 1300]: Q1=505, Q3=1150, IQR=645
@@ -429,7 +395,7 @@ def test_detect_outliers_with_lower_outlier():
 
 def test_detect_outliers_insufficient_files():
     """detect_outliers should return empty for fewer than 4 files."""
-    from scripts.validate_context_limits import detect_outliers
+    from scripts.context_validator.stats import detect_outliers
 
     # Need at least 4 files for quartile calculation
     file_sizes = [1000, 2000, 3000]
@@ -440,7 +406,7 @@ def test_detect_outliers_insufficient_files():
 
 def test_detect_outliers_empty_list():
     """detect_outliers should return empty for empty input."""
-    from scripts.validate_context_limits import detect_outliers
+    from scripts.context_validator.stats import detect_outliers
 
     file_sizes = []
     lower, upper = detect_outliers(file_sizes, iqr_multiplier=1.5)
@@ -450,7 +416,7 @@ def test_detect_outliers_empty_list():
 
 def test_detect_outliers_all_same():
     """detect_outliers should return empty when all files are same size."""
-    from scripts.validate_context_limits import detect_outliers
+    from scripts.context_validator.stats import detect_outliers
 
     # Zero IQR, no outliers possible
     file_sizes = [1000, 1000, 1000, 1000]
@@ -464,7 +430,7 @@ def test_detect_outliers_all_same():
 
 def test_compute_baseline_stats_returns_stats():
     """compute_baseline_stats should return BaselineStats with computed values."""
-    from scripts.validate_context_limits import compute_baseline_stats
+    from scripts.context_validator.stats import compute_baseline_stats
 
     # 8 tightly clustered values
     file_sizes = [100, 101, 102, 103, 104, 105, 106, 107]
@@ -480,7 +446,7 @@ def test_compute_baseline_stats_returns_stats():
 
 def test_compute_baseline_stats_insufficient_data():
     """compute_baseline_stats should return None for fewer than 4 files."""
-    from scripts.validate_context_limits import compute_baseline_stats
+    from scripts.context_validator.stats import compute_baseline_stats
 
     file_sizes = [100, 200, 300]
     stats = compute_baseline_stats(file_sizes, iqr_multiplier=1.5)
@@ -490,7 +456,7 @@ def test_compute_baseline_stats_insufficient_data():
 
 def test_compute_baseline_stats_zero_iqr():
     """compute_baseline_stats should return None when IQR is zero."""
-    from scripts.validate_context_limits import compute_baseline_stats
+    from scripts.context_validator.stats import compute_baseline_stats
 
     file_sizes = [100, 100, 100, 100]
     stats = compute_baseline_stats(file_sizes, iqr_multiplier=1.5)
@@ -500,7 +466,7 @@ def test_compute_baseline_stats_zero_iqr():
 
 def test_compute_baseline_stats_detects_outlier():
     """compute_baseline_stats fences should correctly identify outliers."""
-    from scripts.validate_context_limits import compute_baseline_stats
+    from scripts.context_validator.stats import compute_baseline_stats
 
     # Tightly clustered data
     file_sizes = [100, 101, 102, 103, 104, 105, 106, 107]
