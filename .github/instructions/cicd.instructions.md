@@ -52,4 +52,3 @@ REQUIRE before merge:
 - Workflow syntax validation (actionlint)
 - Security scanning for secrets exposure
 - Required status checks passing
-
