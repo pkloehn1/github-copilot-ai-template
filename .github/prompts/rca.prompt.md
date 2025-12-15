@@ -1,7 +1,6 @@
 ---
 name: rca
 description: Template for documenting Root Cause Analysis (RCA) for production incidents.
-model: copilot-chat
 ---
 
 # Root Cause Analysis Documentation
