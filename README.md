@@ -37,27 +37,31 @@ graph TD
 
 Based on official GitHub Copilot documentation:
 
-| File                                     | Purpose                                         | Max Characters |
-| ---------------------------------------- | ----------------------------------------------- | -------------- |
-| `.github/copilot-instructions.md`        | Repository-wide instructions, auto-loaded       | 8,000          |
-| `.github/instructions/*.instructions.md` | Path-specific instructions with `applyTo` globs | 8,000          |
-| `.github/prompts/*.prompt.md`            | Reusable prompt templates (public preview)      | 8,000          |
-| `.github/agents/*.agent.md`              | Custom agent profiles (public preview)          | 30,000         |
-| `AGENTS.md`                              | Multi-agent workspace instructions              | 30,000         |
+| File                                     | Purpose                                         | Token Limit (4% of Context) |
+| ---------------------------------------- | ----------------------------------------------- | --------------------------- |
+| `.github/copilot-instructions.md`        | Repository-wide instructions, auto-loaded       | 8,000 (Default)             |
+| `.github/instructions/*.instructions.md` | Path-specific instructions with `applyTo` globs | 8,000 (Default)             |
+| `.github/prompts/*.prompt.md`            | Reusable prompt templates (public preview)      | 8,000 (Default)             |
+| `.github/agents/*.agent.md`              | Custom agent profiles (public preview)          | 8,000 (Default)             |
+| `AGENTS.md`                              | Multi-agent workspace instructions              | 8,000 (Default)             |
+| `CLAUDE.md`                              | Anthropic Claude instructions                   | 8,000 (200K Context)        |
+| `GEMINI.md`                              | Google Gemini instructions                      | 42,000 (1M Context)         |
+| `GPT.md`                                 | OpenAI GPT instructions                         | 42,000 (1M Context)         |
 
 ## Context Window Limits
 
-GitHub Copilot enforces character limits on instruction files to manage context windows effectively.
+GitHub Copilot enforces token limits on instruction files to manage context windows effectively.
+This repository implements a dynamic limit of **4% of the provider's context window** for instruction files.
 
-### Character Limits by File Type
+### Token Limits by File Type (Default Provider)
 
-| File Type                  | Max Characters | Recommended Range | Notes                              |
-| -------------------------- | -------------- | ----------------- | ---------------------------------- |
-| Repository instructions    | 8,000          | 2,000-6,000       | Auto-loaded for all requests       |
-| Path-specific instructions | 8,000          | 1,000-4,000       | Loaded based on `applyTo` patterns |
-| Prompt files               | 8,000          | 1,000-4,000       | Manually invoked                   |
-| Custom agents              | 30,000         | 5,000-20,000      | Includes YAML frontmatter          |
-| Code review instructions   | 4,000          | 1,000-3,000       | Specific to code review feature    |
+| File Type                  | Max Tokens | Max Characters (Est.) | Recommended Range (Chars) | Notes                              |
+| -------------------------- | ---------- | --------------------- | ------------------------- | ---------------------------------- |
+| Repository instructions    | 8,000      | ~32,000               | 2,000-6,000               | Auto-loaded for all requests       |
+| Path-specific instructions | 8,000      | ~32,000               | 1,000-4,000               | Loaded based on `applyTo` patterns |
+| Prompt files               | 8,000      | ~32,000               | 1,000-4,000               | Manually invoked                   |
+| Custom agents              | 8,000      | ~32,000               | 5,000-20,000              | Includes YAML frontmatter          |
+| Code review instructions   | 8,000      | ~32,000               | 1,000-3,000               | Specific to code review feature    |
 
 ### Best Practices
 
