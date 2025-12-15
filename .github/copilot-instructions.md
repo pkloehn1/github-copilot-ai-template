@@ -117,6 +117,16 @@ Action pinning:
 - MUST use MAJOR version only (@v4)
 - NEVER use branches or minor/patch pins
 
+## Version Control Standards
+
+**CRITICAL**: Atomic commits are MANDATORY.
+
+- **One File per Commit**: NEVER bundle changes to multiple files in a single commit.
+- **Exception**: Tightly coupled changes (e.g., a file and its specific test) MAY be grouped if necessary, but single-file commits are preferred.
+- **Human Approval Required**: If a multi-file commit is deemed necessary (under the Exception), you MUST ask for and receive explicit human approval BEFORE running the git commit command.
+- **Descriptive Messages**: Each commit message must explain the specific change to that specific file.
+- **No "Cleanup" Commits**: Do not group formatting fixes for multiple files into a single "style: fix formatting" commit. Apply them individually.
+
 ## Output Generation Standards
 
 REQUIRE:
