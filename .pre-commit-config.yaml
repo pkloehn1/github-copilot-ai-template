@@ -2,7 +2,7 @@
 # See https://pre-commit.com for more information
 
 repos:
-  # Validate GitHub Copilot instruction file character limits
+  # Validate GitHub Copilot instruction file token limits
   - repo: local
     hooks:
       - id: validate-copilot-context-limits
