@@ -56,4 +56,4 @@ repos:
         language: python
         pass_filenames: false
         # This hook is heavy (runs Docker), so it might be better to run it manually or on push
-        # stages: [manual] 
+        # stages: [manual]

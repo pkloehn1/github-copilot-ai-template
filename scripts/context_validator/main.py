@@ -90,9 +90,8 @@ def main() -> int:
             )
 
     # Print final section total
-    if current_section:
-        if section_files > 1:
-            print(f"  --- {section_total_tokens} tokens ({section_files} files)")
+    if current_section and section_files > 1:
+        print(f"  --- {section_total_tokens} tokens ({section_files} files)")
 
     print("=" * 70)
     print(f"Total: {overall_total_tokens} tokens across {overall_files} files")
