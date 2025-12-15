@@ -133,15 +133,15 @@ Environment promotion:
 
 ## Context Window Management
 
-Be aware of instruction file character limits:
+Be aware of instruction file token limits (Default Provider):
 
-| File Type | Max Characters |
-|-----------|----------------|
-| Repository instructions | 8,000 |
-| Path-specific instructions | 8,000 |
-| Prompt files | 8,000 |
-| Agent files | 30,000 |
-| Code review | 4,000 |
+| File Type                  | Max Tokens |
+| -------------------------- | ---------- |
+| Repository instructions    | 8,000      |
+| Path-specific instructions | 8,000      |
+| Prompt files               | 8,000      |
+| Agent files                | 8,000      |
+| Code review                | 8,000      |
 
 Token allocation strategy:
 
@@ -150,4 +150,3 @@ Token allocation strategy:
 - Reserve 10-15% for output generation
 
 WARN when context load approaches limits.
-
