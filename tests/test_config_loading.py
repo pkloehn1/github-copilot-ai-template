@@ -8,7 +8,7 @@ import pytest
 
 def test_load_config_returns_dict():
     """load_config should return a dictionary."""
-    from scripts.validate_context_limits import load_config
+    from scripts.context_validator.config import load_config
 
     # Use the actual config file
     config_path = Path(__file__).parent.parent / "scripts" / "copilot-context-health.conf"
@@ -19,7 +19,7 @@ def test_load_config_returns_dict():
 
 def test_load_config_parses_required_keys():
     """load_config should parse all required keys from config."""
-    from scripts.validate_context_limits import load_config
+    from scripts.context_validator.config import load_config
 
     config_path = Path(__file__).parent.parent / "scripts" / "copilot-context-health.conf"
     result = load_config(config_path)
@@ -39,7 +39,7 @@ def test_load_config_parses_required_keys():
 
 def test_load_config_ignores_comments():
     """load_config should ignore lines starting with #."""
-    from scripts.validate_context_limits import load_config
+    from scripts.context_validator.config import load_config
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".conf", delete=False) as f:
         f.write("# This is a comment\n")
@@ -54,7 +54,7 @@ def test_load_config_ignores_comments():
 
 def test_load_config_ignores_empty_lines():
     """load_config should ignore empty lines."""
-    from scripts.validate_context_limits import load_config
+    from scripts.context_validator.config import load_config
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".conf", delete=False) as f:
         f.write("KEY1=100\n")
@@ -69,7 +69,7 @@ def test_load_config_ignores_empty_lines():
 
 def test_load_config_missing_file_exits():
     """load_config should exit with error if file not found."""
-    from scripts.validate_context_limits import load_config
+    from scripts.context_validator.config import load_config
 
     with pytest.raises(SystemExit):
         load_config(Path("/nonexistent/path/config.conf"))

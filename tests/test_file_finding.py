@@ -14,7 +14,7 @@ def get_repo_root() -> Path:
 
 def test_find_files_exact_path_with_temp_file():
     """find_files should find a single file by exact path."""
-    from scripts.validate_context_limits import find_files
+    from scripts.context_validator.utils import find_files
 
     # Create temp file in repo root to test exact path matching
     repo_root = get_repo_root()
@@ -32,7 +32,7 @@ def test_find_files_exact_path_with_temp_file():
 
 def test_find_files_discovers_dotgithub_files():
     """find_files should discover files in .github directory."""
-    from scripts.validate_context_limits import find_files
+    from scripts.context_validator.utils import find_files
 
     repo_root = get_repo_root()
 
@@ -47,7 +47,7 @@ def test_find_files_discovers_dotgithub_files():
 
 def test_find_files_glob_discovers_instruction_files():
     """find_files should discover instruction files matching pattern."""
-    from scripts.validate_context_limits import find_files
+    from scripts.context_validator.utils import find_files
 
     repo_root = get_repo_root()
     result = find_files(repo_root, ".github/instructions/*.instructions.md")
@@ -60,7 +60,7 @@ def test_find_files_glob_discovers_instruction_files():
 
 def test_find_files_glob_discovers_prompt_files():
     """find_files should discover prompt files matching pattern."""
-    from scripts.validate_context_limits import find_files
+    from scripts.context_validator.utils import find_files
 
     repo_root = get_repo_root()
     result = find_files(repo_root, ".github/prompts/*.prompt.md")
@@ -73,7 +73,7 @@ def test_find_files_glob_discovers_prompt_files():
 
 def test_find_files_nonexistent_returns_empty():
     """find_files should return empty list for nonexistent files."""
-    from scripts.validate_context_limits import find_files
+    from scripts.context_validator.utils import find_files
 
     repo_root = get_repo_root()
     result = find_files(repo_root, "NONEXISTENT_FILE_12345.md")
@@ -83,7 +83,7 @@ def test_find_files_nonexistent_returns_empty():
 
 def test_find_files_nonexistent_glob_returns_empty():
     """find_files should return empty list for unmatched glob pattern."""
-    from scripts.validate_context_limits import find_files
+    from scripts.context_validator.utils import find_files
 
     repo_root = get_repo_root()
     result = find_files(repo_root, ".github/nonexistent_dir_12345/*.md")
