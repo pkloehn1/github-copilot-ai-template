@@ -77,6 +77,14 @@ REQUIRE:
 - Single source of truth (no duplicate definitions)
 - Zero-tolerance security policies (no hardcoded secrets)
 
+## Package Management Standards
+
+REQUIRE:
+
+- Use `pip` for Python package management.
+- Maintain `requirements.txt` or `pyproject.toml` for dependencies.
+- Do NOT use `uv`, `poetry`, or other package managers unless explicitly authorized.
+
 ENFORCE repository standards through layered validation:
 
 - Pre-commit hooks (local validation)
