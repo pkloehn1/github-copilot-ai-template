@@ -1,0 +1,64 @@
+name: Super-Linter
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Lint Code Base
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+      statuses: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Lint Code Base
+        uses: super-linter/super-linter@v7
+        env:
+          # To report GitHub Actions status checks
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Load configuration from file
+          # Note: We manually load the env file in the next step or pass it directly?
+          # Super-Linter doesn't automatically load a .env file from the repo root for its OWN config,
+          # but it looks for linter config files.
+          # However, we can use the `env` block to set variables based on the file, or just hardcode the critical ones
+          # and rely on the file for the local run.
+          # BETTER APPROACH: Use `cat .github/super-linter.env >> $GITHUB_ENV` is for workflow env vars,
+          # but Super-Linter reads env vars.
+          # Let's try to pass the file content to env vars or just duplicate the critical ones.
+          # Actually, Super-Linter has a `FILTER_REGEX_INCLUDE` etc.
+          # The standard way to share config is to have the env file and load it.
+          # But `uses` doesn't support `env-file`.
+          # We can use a step to read the file and set output, but that's complex.
+          # Simpler: Just reference the file in the local script, and put the vars in the workflow.
+          # WAIT: The user asked for "AI to ensure that the super-linter configuration works for both".
+          # So I should probably make the workflow read the env file.
+
+          # Let's try to use `dotenv-linter` approach or similar? No.
+          # I will add a step to load the env vars from the file before running super-linter.
+
+          # Actually, the Super-Linter action runs in a container. Passing env vars to the action is how we configure it.
+          # I will use a step to read the file and export the variables to GITHUB_ENV.
+
+      - name: Load Super-Linter Configuration
+        run: |
+          if [ -f .github/super-linter.env ]; then
+            cat .github/super-linter.env | grep -v '^#' | grep -v '^\s*$' >> $GITHUB_ENV
+          fi
+        shell: bash
+
+      - name: Run Super-Linter
+        uses: super-linter/super-linter@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The variables from GITHUB_ENV will be available here
