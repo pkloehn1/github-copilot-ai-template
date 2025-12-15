@@ -56,4 +56,3 @@ REQUIRE:
 - Docstrings for public functions
 - Type hints where language supports
 - README for modules with external interfaces
-
