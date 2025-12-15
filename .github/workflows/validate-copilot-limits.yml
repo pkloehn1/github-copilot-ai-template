@@ -39,11 +39,5 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dev dependencies
-        run: pip install -e ".[dev]"
-
-      - name: Run tests
-        run: python -m pytest tests/ -v
-
-      - name: Validate Copilot instruction file limits
-        run: python scripts/validate_context_limits.py
+      - name: Validate Context Limits
+        uses: ./.github/actions/validate-context
