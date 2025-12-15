@@ -1,7 +1,6 @@
 ---
 name: problem-solving
 description: Framework for analyzing complex problems or incidents using OODA, FTA, etc.
-model: copilot-chat
 ---
 
 # Problem-Solving Framework
