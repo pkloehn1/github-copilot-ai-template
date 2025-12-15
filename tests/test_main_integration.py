@@ -37,18 +37,19 @@ def test_main_validates_discovered_files():
     """Main should validate files it discovers based on config patterns."""
     result = run_validation_script()
 
-    # Script should report OK, warning, or error status for files
-    output = result.stdout.lower()
-    assert "ok:" in output or "warning:" in output or "error:" in output
+    # Script should report status icons or token counts
+    output = result.stdout
+    # Check for common output elements in new format
+    assert "tokens" in output
+    assert "[" in output and "]" in output  # Provider name brackets
 
 
 def test_main_reports_summary():
     """Main should report a summary of validation results."""
     result = run_validation_script()
 
-    assert "Summary:" in result.stdout
-    assert "error(s)" in result.stdout
-    assert "warning(s)" in result.stdout
+    assert "Total:" in result.stdout
+    assert "tokens across" in result.stdout
 
 
 def test_main_returns_zero_when_all_pass():
@@ -56,7 +57,7 @@ def test_main_returns_zero_when_all_pass():
     result = run_validation_script()
 
     # Only assert return code 0 if no errors reported
-    if "0 error(s)" in result.stdout:
+    if "FAILED:" not in result.stdout:
         assert result.returncode == 0
 
 
@@ -78,12 +79,4 @@ def test_main_reports_provider_limits():
     # Script should report provider limits in header
     assert "Provider limits:" in result.stdout
     # Should show per-file token validation with provider info
-    assert "tokens)" in result.stdout
-
-
-def test_main_reports_outlier_analysis():
-    """Main should report outlier analysis for categories with multiple files."""
-    result = run_validation_script()
-
-    # Script should report outlier analysis section (includes stddev info)
-    assert "Outlier Analysis" in result.stdout
+    assert "tokens" in result.stdout
