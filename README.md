@@ -21,7 +21,6 @@ graph TD
         E --> F["*.prompt.md<br/>(Reusable prompts)"]
         A --> G["agents/"]
         G --> H["*.agent.md<br/>(Custom agents)"]
-        I["AGENTS.md<br/>(Multi-agent workspace)"]
     end
 
     subgraph "Load Order"
@@ -43,10 +42,6 @@ Based on official GitHub Copilot documentation:
 | `.github/instructions/*.instructions.md` | Path-specific instructions with `applyTo` globs | 8,000 (Default)             |
 | `.github/prompts/*.prompt.md`            | Reusable prompt templates (public preview)      | 8,000 (Default)             |
 | `.github/agents/*.agent.md`              | Custom agent profiles (public preview)          | 8,000 (Default)             |
-| `AGENTS.md`                              | Multi-agent workspace instructions              | 8,000 (Default)             |
-| `CLAUDE.md`                              | Anthropic Claude instructions                   | 8,000 (200K Context)        |
-| `GEMINI.md`                              | Google Gemini instructions                      | 42,000 (1M Context)         |
-| `GPT.md`                                 | OpenAI GPT instructions                         | 42,000 (1M Context)         |
 
 ## Context Window Limits
 

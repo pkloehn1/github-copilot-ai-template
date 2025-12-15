@@ -1,3 +1,9 @@
+---
+name: rca
+description: Template for documenting Root Cause Analysis (RCA) for production incidents.
+model: copilot-chat
+---
+
 # Root Cause Analysis Documentation
 
 Use this prompt when documenting root cause analysis for production incidents.
@@ -62,8 +68,8 @@ ENFORCE SSOT:
 
 ## Timeline
 
-| Time | Event |
-|------|-------|
+| Time  | Event               |
+| ----- | ------------------- |
 | HH:MM | [Event description] |
 
 ## Analysis
@@ -96,4 +102,3 @@ ENFORCE SSOT:
 - Runbook updates: [links]
 - Monitoring changes: [links]
 ```
-
