@@ -344,8 +344,6 @@ def test_validate_category_error():
     assert result.status == "error"
 
 
-
-
 def test_detect_outliers_no_outliers():
     """detect_outliers should return empty lists when no outliers exist."""
     from scripts.context_validator.stats import detect_outliers
