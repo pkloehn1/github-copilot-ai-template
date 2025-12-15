@@ -46,3 +46,14 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
         args: ["--maxkb=100"]
+
+  # Docker Super-Linter (Local)
+  - repo: local
+    hooks:
+      - id: super-linter-local
+        name: Super-Linter (Docker)
+        entry: python scripts/run_super_linter_hook.py
+        language: python
+        pass_filenames: false
+        # This hook is heavy (runs Docker), so it might be better to run it manually or on push
+        # stages: [manual] 
