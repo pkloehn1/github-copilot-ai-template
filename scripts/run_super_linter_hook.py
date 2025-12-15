@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-"""
-Cross-platform wrapper to run the local Super-Linter script from pre-commit.
-"""
+"""Cross-platform wrapper to run the local Super-Linter script from pre-commit."""
+
 import os
 import platform
 import subprocess
