@@ -71,12 +71,14 @@ def test_main_uses_config_file():
     assert result.returncode in [0, 1]  # Should not crash
 
 
-def test_main_reports_category_budgets():
-    """Main should report category budget validation results."""
+def test_main_reports_provider_limits():
+    """Main should report provider-specific token limits."""
     result = run_validation_script()
 
-    # Script should report category budget validation
-    assert "Category Budgets:" in result.stdout or "Budget:" in result.stdout
+    # Script should report provider limits in header
+    assert "Provider limits:" in result.stdout
+    # Should show per-file token validation with provider info
+    assert "tokens)" in result.stdout
 
 
 def test_main_reports_outlier_analysis():

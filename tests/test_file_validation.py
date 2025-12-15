@@ -8,61 +8,70 @@ def test_validate_file_ok():
     """validate_file should return ok status for file under info threshold."""
     from scripts.validate_context_limits import validate_file
 
+    # With 4 chars/token and 8000 token limit (default provider), 1000 chars = 250 tokens
+    # 250 tokens is ~3% of 8000, well under 50% info threshold
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-        f.write("a" * 100)  # 10% of 1000, under info threshold
+        f.write("a" * 1000)
         f.flush()
         file_path = Path(f.name)
 
-    result = validate_file(file_path, limit=1000, warn_threshold=750, info_threshold=500)
+    result = validate_file(file_path, chars_per_token=4, info_pct=50, warn_pct=75)
 
     assert result.status == "ok"
-    assert result.char_count == 100
-    assert result.limit == 1000
+    assert result.char_count == 1000
+    assert result.token_count == 250
+    assert result.provider == "default"
 
 
 def test_validate_file_info():
     """validate_file should return info status for file above info threshold."""
     from scripts.validate_context_limits import validate_file
 
+    # Need > 50% of 8000 tokens = 4000 tokens = 16000 chars
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-        f.write("a" * 600)  # 60% of 1000, between info and warn
+        f.write("a" * 20000)  # 5000 tokens, ~62.5% of 8000
         f.flush()
         file_path = Path(f.name)
 
-    result = validate_file(file_path, limit=1000, warn_threshold=750, info_threshold=500)
+    result = validate_file(file_path, chars_per_token=4, info_pct=50, warn_pct=75)
 
     assert result.status == "info"
-    assert result.char_count == 600
+    assert result.char_count == 20000
+    assert result.token_count == 5000
 
 
 def test_validate_file_warning():
     """validate_file should return warning status for file above warn threshold."""
     from scripts.validate_context_limits import validate_file
 
+    # Need > 75% of 8000 tokens = 6000 tokens = 24000 chars
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-        f.write("a" * 800)  # 80% of 1000, above warn threshold
+        f.write("a" * 28000)  # 7000 tokens, 87.5% of 8000
         f.flush()
         file_path = Path(f.name)
 
-    result = validate_file(file_path, limit=1000, warn_threshold=750, info_threshold=500)
+    result = validate_file(file_path, chars_per_token=4, info_pct=50, warn_pct=75)
 
     assert result.status == "warning"
-    assert result.char_count == 800
+    assert result.char_count == 28000
+    assert result.token_count == 7000
 
 
 def test_validate_file_error():
     """validate_file should return error status for file over limit."""
     from scripts.validate_context_limits import validate_file
 
+    # Need > 8000 tokens = 32000 chars
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-        f.write("a" * 1100)  # Over 1000 limit
+        f.write("a" * 36000)  # 9000 tokens, over 8000 limit
         f.flush()
         file_path = Path(f.name)
 
-    result = validate_file(file_path, limit=1000, warn_threshold=750, info_threshold=500)
+    result = validate_file(file_path, chars_per_token=4, info_pct=50, warn_pct=75)
 
     assert result.status == "error"
-    assert result.char_count == 1100
+    assert result.char_count == 36000
+    assert result.token_count == 9000
 
 
 def test_get_char_count():
@@ -124,6 +133,149 @@ def test_estimate_tokens_zero():
 
     result = estimate_tokens(0)
     assert result == 0
+
+
+def test_get_provider_for_claude_md():
+    """get_provider_for_file should detect CLAUDE.md as anthropic."""
+    from scripts.validate_context_limits import get_provider_for_file
+
+    result = get_provider_for_file(Path("CLAUDE.md"))
+    assert result == "anthropic"
+
+
+def test_get_provider_for_gemini_md():
+    """get_provider_for_file should detect GEMINI.md as google."""
+    from scripts.validate_context_limits import get_provider_for_file
+
+    result = get_provider_for_file(Path("GEMINI.md"))
+    assert result == "google"
+
+
+def test_get_provider_for_agents_md():
+    """get_provider_for_file should detect AGENTS.md as default."""
+    from scripts.validate_context_limits import get_provider_for_file
+
+    result = get_provider_for_file(Path("AGENTS.md"))
+    assert result == "default"
+
+
+def test_get_provider_for_copilot_instructions():
+    """get_provider_for_file should detect copilot-instructions.md as default."""
+    from scripts.validate_context_limits import get_provider_for_file
+
+    result = get_provider_for_file(Path(".github/copilot-instructions.md"))
+    assert result == "default"
+
+
+def test_get_provider_token_limit_anthropic():
+    """get_provider_token_limit should return 8K tokens for anthropic."""
+    from scripts.validate_context_limits import get_provider_token_limit
+
+    result = get_provider_token_limit("anthropic")
+    assert result == 8000  # 4% of 200K
+
+
+def test_get_provider_token_limit_google():
+    """get_provider_token_limit should return ~42K tokens for google."""
+    from scripts.validate_context_limits import get_provider_token_limit
+
+    result = get_provider_token_limit("google")
+    assert result == 41943  # 4% of 1,048,576
+
+
+def test_get_provider_token_limit_default():
+    """get_provider_token_limit should return 8K tokens for default."""
+    from scripts.validate_context_limits import get_provider_token_limit
+
+    result = get_provider_token_limit("default")
+    assert result == 8000  # 4% of 200K (conservative)
+
+
+def test_get_provider_token_limit_unknown_key():
+    """get_provider_token_limit should return default limit for unknown provider."""
+    from scripts.validate_context_limits import get_provider_token_limit
+
+    # Unknown provider key should fall back to default limit
+    result = get_provider_token_limit("unknown_provider")
+    assert result == 8000  # Same as default
+
+
+def test_validate_file_exactly_at_info_threshold():
+    """validate_file should return ok when exactly at info threshold."""
+    from scripts.validate_context_limits import validate_file
+
+    # Exactly 50% of 8000 = 4000 tokens = 16000 chars
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write("a" * 16000)  # 4000 tokens, exactly 50%
+        f.flush()
+        file_path = Path(f.name)
+
+    result = validate_file(file_path, chars_per_token=4, info_pct=50, warn_pct=75)
+
+    # At exactly 50%, still ok (must exceed threshold to trigger info)
+    assert result.status == "ok"
+
+
+def test_validate_file_one_token_over_info_threshold():
+    """validate_file should return info when one token over info threshold."""
+    from scripts.validate_context_limits import validate_file
+
+    # One token over 50% of 8000 = 4001 tokens = 16004 chars
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write("a" * 16004)  # 4001 tokens, just over 50%
+        f.flush()
+        file_path = Path(f.name)
+
+    result = validate_file(file_path, chars_per_token=4, info_pct=50, warn_pct=75)
+
+    # One token over 50% triggers info
+    assert result.status == "info"
+
+
+def test_validate_file_just_under_info_threshold():
+    """validate_file should return ok when just under info threshold."""
+    from scripts.validate_context_limits import validate_file
+
+    # Just under 50% of 8000 = 3999 tokens = 15996 chars
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write("a" * 15996)  # 3999 tokens, just under 50%
+        f.flush()
+        file_path = Path(f.name)
+
+    result = validate_file(file_path, chars_per_token=4, info_pct=50, warn_pct=75)
+
+    assert result.status == "ok"
+
+
+def test_validate_file_exactly_at_limit():
+    """validate_file should return warning when exactly at limit."""
+    from scripts.validate_context_limits import validate_file
+
+    # Exactly 8000 tokens = 32000 chars (at limit, not over)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write("a" * 32000)  # 8000 tokens, exactly at limit
+        f.flush()
+        file_path = Path(f.name)
+
+    result = validate_file(file_path, chars_per_token=4, info_pct=50, warn_pct=75)
+
+    # At exactly limit (100%), should be warning, not error
+    assert result.status == "warning"
+
+
+def test_validate_file_one_token_over_limit():
+    """validate_file should return error when one token over limit."""
+    from scripts.validate_context_limits import validate_file
+
+    # 8001 tokens = 32004 chars (one token over)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write("a" * 32004)  # 8001 tokens, one over limit
+        f.flush()
+        file_path = Path(f.name)
+
+    result = validate_file(file_path, chars_per_token=4, info_pct=50, warn_pct=75)
+
+    assert result.status == "error"
 
 
 def test_validate_category_ok():

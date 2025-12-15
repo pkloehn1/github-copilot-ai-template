@@ -25,12 +25,10 @@ def test_load_config_parses_required_keys():
     result = load_config(config_path)
 
     # Verify required keys exist and are positive integers
+    # Note: LLM provider limits are now in LLM_PROVIDERS dict, not config file
     required_keys = [
-        "LIMIT_REPO_INSTRUCTIONS",
-        "LIMIT_PATH_INSTRUCTIONS",
-        "LIMIT_PROMPT_FILES",
-        "LIMIT_CUSTOM_AGENTS",
-        "LIMIT_CODE_REVIEW",
+        "CHARS_PER_TOKEN",
+        "INFO_THRESHOLD_PERCENT",
         "WARN_THRESHOLD_PERCENT",
     ]
     for key in required_keys:

@@ -1,16 +1,106 @@
 #!/usr/bin/env python3
-"""Validate GitHub Copilot instruction file character limits.
+"""Validate GitHub Copilot instruction file token limits.
 
-Based on official GitHub Copilot documentation.
+Based on official GitHub Copilot and LLM provider documentation.
 Cross-platform script (Windows/Linux/macOS).
 """
 
 import argparse
+import fnmatch
 import subprocess
 import sys
 from pathlib import Path
 from statistics import quantiles
-from typing import NamedTuple
+from typing import Any, NamedTuple
+
+# =============================================================================
+# LLM Provider Configurations
+# =============================================================================
+# Context windows are from official provider documentation (December 2025).
+# Instruction limits are 4% of context window (middle of 3-5% recommended range).
+# Reference: https://docs.github.com/copilot/reference/ai-models/supported-models
+#
+# File patterns are based on GitHub Copilot agent instructions documentation:
+# - CLAUDE.md: Anthropic Claude models
+# - GEMINI.md: Google Gemini models
+# - AGENTS.md, .github/copilot-instructions.md: Default (any model)
+# =============================================================================
+LLM_PROVIDERS: dict[str, dict[str, Any]] = {
+    "anthropic": {
+        "display_name": "Anthropic Claude",
+        "file_patterns": ["CLAUDE.md"],
+        "context_window_tokens": 200_000,  # Claude Sonnet 4/4.5, Opus 4/4.5, Haiku 4.5
+        "instruction_limit_pct": 4,  # 4% of context window
+    },
+    "google": {
+        "display_name": "Google Gemini",
+        "file_patterns": ["GEMINI.md"],
+        "context_window_tokens": 1_048_576,  # Gemini 2.5/3 Pro
+        "instruction_limit_pct": 4,  # 4% of context window
+    },
+    "openai": {
+        "display_name": "OpenAI GPT",
+        "file_patterns": ["GPT.md", "OPENAI.md"],
+        "context_window_tokens": 1_047_576,  # GPT-4.1
+        "instruction_limit_pct": 4,  # 4% of context window
+    },
+    "xai": {
+        "display_name": "xAI Grok",
+        "file_patterns": ["GROK.md", "XAI.md"],
+        "context_window_tokens": 1_000_000,  # Grok Code Fast 1
+        "instruction_limit_pct": 4,  # 4% of context window
+    },
+    "default": {
+        "display_name": "Default (Copilot)",
+        "file_patterns": [
+            "AGENTS.md",
+            ".github/copilot-instructions.md",
+            ".github/instructions/*.instructions.md",
+            ".github/prompts/*.prompt.md",
+            ".github/agents/*.agent.md",
+        ],
+        # Use most conservative limit (Claude's 200K) for generic files
+        "context_window_tokens": 200_000,
+        "instruction_limit_pct": 4,  # 4% of context window
+    },
+}
+
+
+def get_provider_for_file(file_path: Path) -> str:
+    """Detect LLM provider from filename pattern.
+
+    Args:
+        file_path: Path to the instruction file.
+
+    Returns:
+        Provider key (e.g., 'anthropic', 'google', 'default').
+    """
+    filename = file_path.name
+    rel_path = str(file_path).replace("\\", "/")
+
+    for provider_key, config in LLM_PROVIDERS.items():
+        if provider_key == "default":
+            continue  # Check default last
+        for pattern in config["file_patterns"]:
+            if fnmatch.fnmatch(filename, pattern) or fnmatch.fnmatch(rel_path, pattern):
+                return provider_key
+
+    return "default"
+
+
+def get_provider_token_limit(provider_key: str) -> int:
+    """Get instruction token limit for a provider.
+
+    Args:
+        provider_key: Provider key (e.g., 'anthropic', 'google').
+
+    Returns:
+        Token limit for instruction files (4% of context window).
+    """
+    config = LLM_PROVIDERS.get(provider_key, LLM_PROVIDERS["default"])
+    context_tokens = config["context_window_tokens"]
+    limit_pct = config["instruction_limit_pct"]
+    return context_tokens * limit_pct // 100
 
 
 class ValidationResult(NamedTuple):
@@ -18,7 +108,9 @@ class ValidationResult(NamedTuple):
 
     path: str
     char_count: int
-    limit: int
+    token_count: int
+    token_limit: int
+    provider: str
     status: str  # "ok", "info", "warning", "error"
 
 
@@ -230,18 +322,35 @@ def find_files(root: Path, pattern: str) -> list[Path]:
 
 def validate_file(
     file_path: Path,
-    limit: int,
-    warn_threshold: int,
-    info_threshold: int,
+    chars_per_token: int,
+    info_pct: int,
+    warn_pct: int,
 ) -> ValidationResult:
-    """Validate a single file against its limit."""
-    char_count = get_char_count(file_path)
+    """Validate a single file against its provider-specific token limit.
 
-    if char_count > limit:
+    Args:
+        file_path: Path to the file to validate.
+        chars_per_token: Characters per token for estimation.
+        info_pct: Percentage of limit for INFO status.
+        warn_pct: Percentage of limit for WARN status.
+
+    Returns:
+        ValidationResult with provider-specific token limit applied.
+    """
+    char_count = get_char_count(file_path)
+    token_count = estimate_tokens(char_count, chars_per_token)
+
+    provider = get_provider_for_file(file_path)
+    token_limit = get_provider_token_limit(provider)
+
+    info_threshold = token_limit * info_pct // 100
+    warn_threshold = token_limit * warn_pct // 100
+
+    if token_count > token_limit:
         status = "error"
-    elif char_count > warn_threshold:
+    elif token_count > warn_threshold:
         status = "warning"
-    elif char_count > info_threshold:
+    elif token_count > info_threshold:
         status = "info"
     else:
         status = "ok"
@@ -249,7 +358,9 @@ def validate_file(
     return ValidationResult(
         path=str(file_path),
         char_count=char_count,
-        limit=limit,
+        token_count=token_count,
+        token_limit=token_limit,
+        provider=provider,
         status=status,
     )
 
@@ -372,48 +483,35 @@ def main() -> int:
     warn_pct = int(config.get("WARN_THRESHOLD_PERCENT", 75))
     chars_per_token = int(config.get("CHARS_PER_TOKEN", 4))
 
-    # Define file patterns and their limits from config (cast to int)
-    repo_limit = int(config["LIMIT_REPO_INSTRUCTIONS"])
-    path_limit = int(config["LIMIT_PATH_INSTRUCTIONS"])
-    prompt_limit = int(config["LIMIT_PROMPT_FILES"])
-    agent_limit = int(config["LIMIT_CUSTOM_AGENTS"])
-
-    # Category budgets from config
-    budgets = {
-        "Repository Instructions": int(config.get("BUDGET_REPO_INSTRUCTIONS", repo_limit)),
-        "Path-Specific Instructions": int(config.get("BUDGET_PATH_INSTRUCTIONS", 24000)),
-        "Prompt Files": int(config.get("BUDGET_PROMPT_FILES", 24000)),
-        "Custom Agents": int(config.get("BUDGET_CUSTOM_AGENTS", 60000)),
-        "Multi-Agent Workspace": int(config.get("BUDGET_CUSTOM_AGENTS", 60000)),
-    }
-
+    # File patterns to check (limits are now determined by LLM_PROVIDERS)
     file_checks = [
-        ("Repository Instructions", ".github/copilot-instructions.md", repo_limit),
-        ("Path-Specific Instructions", ".github/instructions/**/*.instructions.md", path_limit),
-        ("Prompt Files", ".github/prompts/**/*.prompt.md", prompt_limit),
-        ("Custom Agents", ".github/agents/**/*.agent.md", agent_limit),
-        ("Multi-Agent Workspace", "AGENTS.md", agent_limit),
-        ("Multi-Agent Workspace", "CLAUDE.md", agent_limit),
-        ("Multi-Agent Workspace", "GEMINI.md", agent_limit),
+        ("Repository Instructions", ".github/copilot-instructions.md"),
+        ("Path-Specific Instructions", ".github/instructions/**/*.instructions.md"),
+        ("Prompt Files", ".github/prompts/**/*.prompt.md"),
+        ("Custom Agents", ".github/agents/**/*.agent.md"),
+        ("Multi-Agent Workspace", "AGENTS.md"),
+        ("Multi-Agent Workspace", "CLAUDE.md"),
+        ("Multi-Agent Workspace", "GEMINI.md"),
+        ("Multi-Agent Workspace", "GPT.md"),
+        ("Multi-Agent Workspace", "GROK.md"),
     ]
 
     # Get patterns for baseline comparison
-    instruction_patterns = [pattern for _, pattern, _ in file_checks]
+    instruction_patterns = [pattern for _, pattern in file_checks]
 
-    print("Validating GitHub Copilot instruction file character limits...")
+    print("Validating GitHub Copilot instruction file token limits...")
+    print("Provider limits: 4% of context window (Claude: 8K, Gemini: 42K, GPT: 42K)")
     if args.compare_to:
         print(f"Baseline comparison mode: comparing to {args.compare_to}")
-    print("=" * 62)
+    print("=" * 70)
 
     errors, warnings, current_section = 0, 0, ""
-    section_total, section_files = 0, 0
-    overall_total, overall_files = 0, 0
-    category_totals: dict[str, int] = {}
-    category_files: dict[str, list[tuple[Path, int]]] = {}
+    section_total_tokens, section_files = 0, 0
+    overall_total_tokens, overall_files = 0, 0
+    category_totals: dict[str, int] = {}  # Now stores tokens, not chars
+    category_files: dict[str, list[tuple[Path, int]]] = {}  # (path, tokens)
 
-    for section, pattern, limit in file_checks:
-        info_threshold = int(limit * info_pct / 100)
-        warn_threshold = int(limit * warn_pct / 100)
+    for section, pattern in file_checks:
         files = find_files(repo_root, pattern)
 
         for file_path in files:
@@ -421,75 +519,49 @@ def main() -> int:
                 # Store previous section total for budget validation
                 if current_section:
                     prev_total = category_totals.get(current_section, 0)
-                    category_totals[current_section] = prev_total + section_total
+                    category_totals[current_section] = prev_total + section_total_tokens
                     if section_files > 1:
-                        s_tok = estimate_tokens(section_total, chars_per_token)
-                        print(f"  --- {section_total} chars ~{s_tok} tok ({section_files} files)")
+                        print(f"  --- {section_total_tokens} tokens ({section_files} files)")
                 print(f"\n{section}:")
                 current_section = section
-                section_total, section_files = 0, 0
+                section_total_tokens, section_files = 0, 0
 
-            result = validate_file(file_path, limit, warn_threshold, info_threshold)
-            cnt, lim = result.char_count, result.limit
-            section_total += cnt
+            result = validate_file(file_path, chars_per_token, info_pct, warn_pct)
+            tok, lim = result.token_count, result.token_limit
+            provider_name = LLM_PROVIDERS[result.provider]["display_name"]
+            section_total_tokens += tok
             section_files += 1
-            overall_total += cnt
+            overall_total_tokens += tok
             overall_files += 1
 
-            # Track for outlier detection
+            # Track for outlier detection (now using tokens)
             if section not in category_files:
                 category_files[section] = []
-            category_files[section].append((file_path, cnt))
+            category_files[section].append((file_path, tok))
 
-            tokens = estimate_tokens(cnt, chars_per_token)
             if result.status == "error":
                 print(f"  ERROR: {result.path} exceeds limit")
-                print(f"    Characters: {cnt} / {lim} ({cnt - lim} over) ~{tokens} tokens")
+                print(f"    Tokens: {tok} / {lim} ({tok - lim} over) [{provider_name}]")
                 print("    Fix: Split content into multiple files or reduce text")
                 errors += 1
             elif result.status == "warning":
                 print(f"  WARN: {result.path} approaching limit")
-                print(f"    Characters: {cnt} / {lim} ({lim - cnt} remaining) ~{tokens} tokens")
+                print(f"    Tokens: {tok} / {lim} ({lim - tok} remaining) [{provider_name}]")
                 print("    Action: Review content; consider splitting soon")
                 warnings += 1
             elif result.status == "info":
-                print(f"  INFO: {result.path} ({cnt} / {lim} chars, ~{tokens} tokens)")
+                print(f"  INFO: {result.path} ({tok} / {lim} tokens) [{provider_name}]")
             else:
-                print(f"  OK: {result.path} ({cnt} / {lim} chars, ~{tokens} tokens)")
+                print(f"  OK: {result.path} ({tok} / {lim} tokens) [{provider_name}]")
 
     # Store last section total
     if current_section:
         prev_total = category_totals.get(current_section, 0)
-        category_totals[current_section] = prev_total + section_total
+        category_totals[current_section] = prev_total + section_total_tokens
         if section_files > 1:
-            sec_tok = estimate_tokens(section_total, chars_per_token)
-            print(f"  --- {section_total} chars ~{sec_tok} tok ({section_files} files)")
+            print(f"  --- {section_total_tokens} tokens ({section_files} files)")
 
-    # Category budget validation
-    print("\n" + "=" * 62)
-    print("Category Budgets:")
-    for category, budget in budgets.items():
-        total = category_totals.get(category, 0)
-        if total == 0:
-            continue
-        cat_tokens = estimate_tokens(total, chars_per_token)
-        cat_result = validate_category(category, total, budget, info_pct, warn_pct)
-        if cat_result.status == "error":
-            print(f"  ERROR: {category} exceeds budget")
-            over = total - budget
-            print(f"    Total: {total} / {budget} ({over} over) ~{cat_tokens} tokens")
-            errors += 1
-        elif cat_result.status == "warning":
-            print(f"  WARN: {category} approaching budget")
-            remaining = budget - total
-            print(f"    Total: {total} / {budget} ({remaining} remaining) ~{cat_tokens} tokens")
-            warnings += 1
-        elif cat_result.status == "info":
-            print(f"  INFO: {category} ({total} / {budget} chars, ~{cat_tokens} tokens)")
-        else:
-            print(f"  OK: {category} ({total} / {budget} chars, ~{cat_tokens} tokens)")
-
-    # Outlier analysis using IQR method
+    # Outlier analysis using IQR method (now using tokens)
     iqr_multiplier = config.get("OUTLIER_IQR_MULTIPLIER", 1.5)
     outlier_found = False
 
@@ -512,7 +584,7 @@ def main() -> int:
         for category, files_list in category_files.items():
             # Find matching pattern for this category
             cat_pattern = None
-            for section, pattern, _ in file_checks:
+            for section, pattern in file_checks:
                 if section == category:
                     cat_pattern = pattern
                     break
@@ -526,21 +598,21 @@ def main() -> int:
                 print(f"  {category}: Insufficient baseline data (need 4+ files on {ref})")
                 continue
 
-            for path, size in files_list:
+            for path, tokens in files_list:
                 if str(path) not in changed_set:
                     continue  # Only check changed files
 
                 q1_val, q3_val = int(stats.q1), int(stats.q3)
                 baseline_info = f"Baseline: {stats.file_count} files, Q1={q1_val}, Q3={q3_val}"
-                if size < stats.lower_fence:
+                if tokens < stats.lower_fence:
                     outlier_found = True
-                    print(f"  OUTLIER: {path.name} ({size} chars)")
-                    print(f"    Below lower fence: {stats.lower_fence:.0f} chars")
+                    print(f"  OUTLIER: {path.name} ({tokens} tokens)")
+                    print(f"    Below lower fence: {stats.lower_fence:.0f} tokens")
                     print(f"    {baseline_info}")
-                elif size > stats.upper_fence:
+                elif tokens > stats.upper_fence:
                     outlier_found = True
-                    print(f"  OUTLIER: {path.name} ({size} chars)")
-                    print(f"    Above upper fence: {stats.upper_fence:.0f} chars")
+                    print(f"  OUTLIER: {path.name} ({tokens} tokens)")
+                    print(f"    Above upper fence: {stats.upper_fence:.0f} tokens")
                     print(f"    {baseline_info}")
 
         if not outlier_found:
@@ -551,25 +623,24 @@ def main() -> int:
         for category, files_list in category_files.items():
             if len(files_list) < 4:
                 continue  # Need at least 4 files for IQR
-            sizes = [size for _, size in files_list]
-            lower_outliers, upper_outliers = detect_outliers(sizes, iqr_multiplier)
-            median_size = sorted(sizes)[len(sizes) // 2]
+            token_sizes = [tokens for _, tokens in files_list]
+            lower_outliers, upper_outliers = detect_outliers(token_sizes, iqr_multiplier)
+            median_tokens = sorted(token_sizes)[len(token_sizes) // 2]
             for idx in lower_outliers:
                 outlier_found = True
-                path, size = files_list[idx]
-                diff = size - median_size
-                print(f"  {category}: {path.name} ({size} chars, {diff:+d} vs median) [LOW]")
+                path, tokens = files_list[idx]
+                diff = tokens - median_tokens
+                print(f"  {category}: {path.name} ({tokens} tokens, {diff:+d} vs median) [LOW]")
             for idx in upper_outliers:
                 outlier_found = True
-                path, size = files_list[idx]
-                diff = size - median_size
-                print(f"  {category}: {path.name} ({size} chars, {diff:+d} vs median) [HIGH]")
+                path, tokens = files_list[idx]
+                diff = tokens - median_tokens
+                print(f"  {category}: {path.name} ({tokens} tokens, {diff:+d} vs median) [HIGH]")
         if not outlier_found:
             print("  No outliers detected")
 
-    print("\n" + "=" * 62)
-    overall_tokens = estimate_tokens(overall_total, chars_per_token)
-    print(f"Overall: {overall_total} chars (~{overall_tokens} tokens) across {overall_files} files")
+    print("\n" + "=" * 70)
+    print(f"Overall: {overall_total_tokens} tokens across {overall_files} files")
     print(f"Summary: {errors} error(s), {warnings} warning(s)")
 
     if errors > 0:
