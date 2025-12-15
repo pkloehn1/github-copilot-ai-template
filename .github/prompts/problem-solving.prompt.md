@@ -1,19 +1,25 @@
+---
+name: problem-solving
+description: Framework for analyzing complex problems or incidents using OODA, FTA, etc.
+model: copilot-chat
+---
+
 # Problem-Solving Framework
 
 Use this prompt when analyzing complex problems or incidents.
 
 ## Framework Selection Matrix
 
-| Scenario | Primary Framework | Secondary | Rationale |
-|----------|-------------------|-----------|-----------|
-| Complex unknown incident | Fishbone -> FTA | 5 Whys | Brainstorm -> map factors -> causal chains |
-| Production incident (known) | Runbook | OODA (if fails) | Fast MTTR, escalate if novel |
-| Production incident (novel) | OODA -> FTA + 5 Whys | Runbook update | Adapt -> analyze -> prevent -> document |
-| High-risk deployment | Pre-Mortem -> OODA | Runbook creation | Identify risks -> plan -> create procedure |
-| Simple known failure | Runbook | Issue (if missing) | Fast recovery, document gap |
-| Process/human failure | 5 Whys | Issue | Understand breakdown -> prevent |
-| Multi-factor system failure | FTA + 5 Whys | Issue | Comprehensive + actionable |
-| Time-critical recovery | Runbook -> OODA | FTA + 5 Whys (post) | Recover first, analyze later |
+| Scenario                    | Primary Framework    | Secondary           | Rationale                                  |
+| --------------------------- | -------------------- | ------------------- | ------------------------------------------ |
+| Complex unknown incident    | Fishbone -> FTA      | 5 Whys              | Brainstorm -> map factors -> causal chains |
+| Production incident (known) | Runbook              | OODA (if fails)     | Fast MTTR, escalate if novel               |
+| Production incident (novel) | OODA -> FTA + 5 Whys | Runbook update      | Adapt -> analyze -> prevent -> document    |
+| High-risk deployment        | Pre-Mortem -> OODA   | Runbook creation    | Identify risks -> plan -> create procedure |
+| Simple known failure        | Runbook              | Issue (if missing)  | Fast recovery, document gap                |
+| Process/human failure       | 5 Whys               | Issue               | Understand breakdown -> prevent            |
+| Multi-factor system failure | FTA + 5 Whys         | Issue               | Comprehensive + actionable                 |
+| Time-critical recovery      | Runbook -> OODA      | FTA + 5 Whys (post) | Recover first, analyze later               |
 
 ## OODA Loop (Observe-Orient-Decide-Act)
 
@@ -127,4 +133,3 @@ Runbook attempt -> OODA if fails -> FTA + 5 Whys post-incident -> Issue -> Runbo
 
 **High-Risk Deployment**:
 Pre-Mortem (30-60 min) -> OODA (30-60 min) -> Runbook creation -> FTA + 5 Whys if failure
-
