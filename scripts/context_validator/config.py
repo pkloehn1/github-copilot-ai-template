@@ -1,7 +1,6 @@
 """Configuration and constants for context validation."""
 
 import argparse
-import fnmatch
 import sys
 from pathlib import Path
 from typing import Any
